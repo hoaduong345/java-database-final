@@ -15,6 +15,18 @@ import jakarta.validation.constraints.NotNull;
 @Entity
 public class Customer {
 
+    @OneToMany(mappedBy = "customer", fetch = FetchType.EAGER)
+    @JsonManagedReference
+    private List<OrderDetails> orders;
+
+    public List<OrderDetails> getOrders() {
+        return orders;
+    }
+
+    public void setOrders(List<OrderDetails> orders) {
+        this.orders = orders;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
@@ -27,10 +39,6 @@ public class Customer {
 
     @NotNull(message = "Phone cannot be null")
     private String phone;
-
-    @OneToMany(mappedBy = "customer", fetch = FetchType.EAGER)
-    @JsonManagedReference
-    private List<OrderDetails> orders;
 
     public long getId() {
         return id;
@@ -64,11 +72,4 @@ public class Customer {
         this.phone = phone;
     }
 
-    public List<OrderDetails> getOrders() {
-        return orders;
-    }
-
-    public void setOrders(List<OrderDetails> orders) {
-        this.orders = orders;
-    }
 }

@@ -20,6 +20,46 @@ import java.util.stream.Collectors;
 @RequestMapping("/product")
 public class ProductController {
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> getProductbyId(@PathVariable Long id) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Product product = productRepository.findById(id).orElse(null);
+            if (product == null) {
+                response.put("message", "Product not found with ID: " + id);
+                return ResponseEntity.status(404).body(response);
+            }
+            response.put("product", product);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("message", "Unable to retrieve product: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<Map<String, String>> deleteProduct(@PathVariable Long id) {
+        Map<String, String> response = new HashMap<>();
+
+        boolean exists = serviceClass.validateProductId(id);
+        if (!exists) {
+            response.put("message", "Product does not exist with ID: " + id);
+            return ResponseEntity.status(404).body(response);
+        }
+
+        try {
+            inventoryRepository.deleteByProductId(id);
+            productRepository.deleteById(id);
+            response.put("message", "Product deleted successfully.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            response.put("message", "Unable to delete product: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
     @Autowired
     private ProductRepository productRepository;
 
@@ -47,24 +87,6 @@ public class ProductController {
             return ResponseEntity.badRequest().body(response);
         } catch (Exception e) {
             response.put("message", "An error occurred while adding the product: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
-        }
-    }
-
-    // 4. Get Product by ID (GET)
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getProductbyId(@PathVariable Long id) {
-        Map<String, Object> response = new HashMap<>();
-        try {
-            Product product = productRepository.findById(id).orElse(null);
-            if (product == null) {
-                response.put("message", "Product not found with ID: " + id);
-                return ResponseEntity.status(404).body(response);
-            }
-            response.put("product", product);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            response.put("message", "Unable to retrieve product: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
@@ -120,7 +142,7 @@ public class ProductController {
             @PathVariable Long storeid) {
 
         // Fetch inventory records for the given store and filter products by category
-        List<Product> products = inventoryRepository.findByStore_Id(storeid).stream()
+        List<Product> products = inventoryRepository.findByStoreId(storeid).stream()
                 .map(inventory -> inventory.getProduct())
                 .filter(p -> p != null && category.equalsIgnoreCase(p.getCategory()))
                 .collect(Collectors.toList());
@@ -128,30 +150,6 @@ public class ProductController {
         Map<String, Object> response = new HashMap<>();
         response.put("product", products);
         return ResponseEntity.ok(response);
-    }
-
-    // 9. Delete Product and Related Inventory (DELETE)
-    @DeleteMapping("/{id}")
-    @Transactional
-    public ResponseEntity<Map<String, String>> deleteProduct(@PathVariable Long id) {
-        Map<String, String> response = new HashMap<>();
-
-        boolean exists = serviceClass.validateProductId(id);
-        if (!exists) {
-            response.put("message", "Product does not exist with ID: " + id);
-            return ResponseEntity.status(404).body(response);
-        }
-
-        try {
-            inventoryRepository.deleteByProductId(id);
-            productRepository.deleteById(id);
-            response.put("message", "Product deleted successfully.");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
-            response.put("message", "Unable to delete product: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
-        }
     }
 
     // 10. Search Products by Name (GET)

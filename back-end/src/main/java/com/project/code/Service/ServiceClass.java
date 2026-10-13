@@ -10,16 +10,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class ServiceClass {
 
-    @Autowired
-    private InventoryRepository inventoryRepository;
-
-    @Autowired
-    private ProductRepository productRepository;
-
-    // 1. validateInventory Method:
-    // Checks if an inventory record exists for a given product and store
-    // combination.
-    // Returns `false` if inventory exists, otherwise `true`.
     public boolean validateInventory(Inventory inventory) {
         if (inventory == null || inventory.getProduct() == null || inventory.getStore() == null) {
             return false;
@@ -27,9 +17,21 @@ public class ServiceClass {
         Inventory existingInventory = inventoryRepository.findByProductIdAndStoreId(
                 inventory.getProduct().getId(),
                 inventory.getStore().getId());
-        // Returns false if it already exists, true otherwise
         return existingInventory == null;
     }
+
+    public Inventory getInventoryId(Long productId, Long storeId) {
+        if (productId == null || storeId == null) {
+            return null;
+        }
+        return inventoryRepository.findByProductIdAndStoreId(productId, storeId);
+    }
+
+    @Autowired
+    private InventoryRepository inventoryRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     // 2. validateProduct Method:
     // Checks if a product exists by its name.
@@ -52,13 +54,4 @@ public class ServiceClass {
         return productRepository.existsById(id);
     }
 
-    // 4. getInventoryId Method:
-    // Fetches the inventory record for a given product and store combination.
-    // Returns the inventory record.
-    public Inventory getInventoryId(Long productId, Long storeId) {
-        if (productId == null || storeId == null) {
-            return null;
-        }
-        return inventoryRepository.findByProductIdAndStoreId(productId, storeId);
-    }
 }

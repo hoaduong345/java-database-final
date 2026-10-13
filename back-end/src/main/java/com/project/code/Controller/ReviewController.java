@@ -20,13 +20,13 @@ import java.util.stream.Collectors;
 @RequestMapping("/reviews")
 public class ReviewController {
 
-    @Autowired
-    private ReviewRepository reviewRepository;
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getAllReviews() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("reviews", reviewRepository.findAll());
+        return ResponseEntity.ok(response);
+    }
 
-    @Autowired
-    private CustomerRepository customerRepository;
-
-    // 3. Define the `getReviews` Method
     @GetMapping("/{storeId}/{productId}")
     public ResponseEntity<Map<String, Object>> getReviews(
             @PathVariable Long storeId,
@@ -37,13 +37,11 @@ public class ReviewController {
                         && productId.equals(review.getProductId()))
                 .collect(Collectors.toList());
 
-        // Filter and transform reviews to include comment, rating, and customer name
         List<Map<String, Object>> filteredReviews = reviews.stream().map(review -> {
             Map<String, Object> reviewData = new HashMap<>();
             reviewData.put("comment", review.getComment());
             reviewData.put("rating", review.getRating());
 
-            // Retrieve customer details using customerId
             Customer customer = customerRepository.findById(review.getCustomerId()).orElse(null);
             String customerName = (customer != null) ? customer.getName() : "Anonymous";
             reviewData.put("customerName", customerName);
@@ -51,10 +49,15 @@ public class ReviewController {
             return reviewData;
         }).collect(Collectors.toList());
 
-        // Prepare final response map
         Map<String, Object> response = new HashMap<>();
         response.put("reviews", filteredReviews);
-
         return ResponseEntity.ok(response);
     }
+
+    @Autowired
+    private ReviewRepository reviewRepository;
+
+    @Autowired
+    private CustomerRepository customerRepository;
+
 }

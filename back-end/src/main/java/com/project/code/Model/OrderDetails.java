@@ -18,6 +18,15 @@ import jakarta.persistence.Column;
 @Entity
 public class OrderDetails {
 
+    @ManyToOne
+    @JoinColumn(name = "store_id")
+    @JsonManagedReference
+    private Store store;
+
+    /** Date and time when this order was placed. */
+    @Column(name = "order_date")
+    private LocalDateTime orderDate;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -27,16 +36,7 @@ public class OrderDetails {
     @JsonManagedReference
     private Customer customer;
 
-    @ManyToOne
-    @JoinColumn(name = "store_id")
-    @JsonManagedReference
-    private Store store;
-
     private Double totalPrice;
-
-    /** Date and time when this order was placed. */
-    @Column(name = "order_date")
-    private LocalDateTime orderDate;
 
     @OneToMany(mappedBy = "order", fetch = FetchType.EAGER)
     @JsonManagedReference

@@ -20,6 +20,64 @@ import java.util.stream.Collectors;
 @RequestMapping("/inventory")
 public class InventoryController {
 
+    @GetMapping("/filter/{category}/{name}/{storeId}")
+    public ResponseEntity<Map<String, Object>> filterInventory(
+            @PathVariable String category,
+            @PathVariable String name,
+            @PathVariable Long storeId) {
+        Map<String, Object> response = new HashMap<>();
+        if (storeId == null || storeId <= 0 || category.isBlank() || name.isBlank()) {
+            response.put("message", "Category, name, and a positive store ID are required.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        if (!storeRepository.existsById(storeId)) {
+            response.put("message", "Store not found with ID: " + storeId);
+            return ResponseEntity.status(404).body(response);
+        }
+
+        boolean allCategories = "null".equalsIgnoreCase(category);
+        boolean allNames = "null".equalsIgnoreCase(name);
+        List<Inventory> inventories = inventoryRepository.findByStoreId(storeId).stream()
+                .filter(inventory -> inventory.getProduct() != null)
+                .filter(inventory -> allCategories
+                        || category.equalsIgnoreCase(inventory.getProduct().getCategory()))
+                .filter(inventory -> allNames || (inventory.getProduct().getName() != null
+                        && inventory.getProduct().getName().equalsIgnoreCase(name)))
+                .collect(Collectors.toList());
+        response.put("inventory", inventories);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/validate/{quantity}/{storeId}/{productId}")
+    public ResponseEntity<Map<String, Object>> validateQuantity(
+            @PathVariable int quantity,
+            @PathVariable Long storeId,
+            @PathVariable Long productId) {
+        Map<String, Object> response = new HashMap<>();
+        if (quantity <= 0 || storeId == null || storeId <= 0 || productId == null || productId <= 0) {
+            response.put("message", "Quantity and IDs must be positive values.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        if (!storeRepository.existsById(storeId) || !productRepository.existsById(productId)) {
+            response.put("message", "Store or product was not found.");
+            return ResponseEntity.status(404).body(response);
+        }
+
+        Inventory inventory = inventoryRepository.findByProductIdAndStoreId(productId, storeId);
+        if (inventory == null) {
+            response.put("message", "No inventory record exists for this product and store.");
+            return ResponseEntity.status(404).body(response);
+        }
+        int available = inventory.getStockLevel() == null ? 0 : inventory.getStockLevel();
+        boolean availableForOrder = available >= quantity;
+        response.put("valid", availableForOrder);
+        response.put("availableQuantity", available);
+        response.put("message", availableForOrder
+                ? "Requested quantity is available."
+                : "Insufficient stock for the requested quantity.");
+        return ResponseEntity.ok(response);
+    }
+
     @Autowired
     private ProductRepository productRepository;
 
@@ -80,7 +138,7 @@ public class InventoryController {
     @GetMapping("/store/{storeId}/products")
     public ResponseEntity<Map<String, List<Product>>> getAllProducts(@PathVariable Long storeId) {
         // Fetch inventory list for the store and extract associated products
-        List<Inventory> inventories = inventoryRepository.findByStore_Id(storeId);
+        List<Inventory> inventories = inventoryRepository.findByStoreId(storeId);
         List<Product> products = inventories.stream()
                 .map(Inventory::getProduct)
                 .collect(Collectors.toList());
@@ -113,34 +171,6 @@ public class InventoryController {
 
         Map<String, List<Product>> response = new HashMap<>();
         response.put("product", products);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/filter/{category}/{name}/{storeId}")
-    public ResponseEntity<Map<String, Object>> filterInventory(
-            @PathVariable String category,
-            @PathVariable String name,
-            @PathVariable Long storeId) {
-        Map<String, Object> response = new HashMap<>();
-        if (storeId == null || storeId <= 0 || category.isBlank() || name.isBlank()) {
-            response.put("message", "Category, name, and a positive store ID are required.");
-            return ResponseEntity.badRequest().body(response);
-        }
-        if (!storeRepository.existsById(storeId)) {
-            response.put("message", "Store not found with ID: " + storeId);
-            return ResponseEntity.status(404).body(response);
-        }
-
-        boolean allCategories = "null".equalsIgnoreCase(category);
-        boolean allNames = "null".equalsIgnoreCase(name);
-        List<Inventory> inventories = inventoryRepository.findByStore_Id(storeId).stream()
-                .filter(inventory -> inventory.getProduct() != null)
-                .filter(inventory -> allCategories
-                        || category.equalsIgnoreCase(inventory.getProduct().getCategory()))
-                .filter(inventory -> allNames || (inventory.getProduct().getName() != null
-                        && inventory.getProduct().getName().equalsIgnoreCase(name)))
-                .collect(Collectors.toList());
-        response.put("inventory", inventories);
         return ResponseEntity.ok(response);
     }
 
@@ -177,34 +207,4 @@ public class InventoryController {
         return ResponseEntity.ok(response);
     }
 
-    // 9. Validate Quantity Availability (GET)
-    @GetMapping("/validate/{quantity}/{storeId}/{productId}")
-    public ResponseEntity<Map<String, Object>> validateQuantity(
-            @PathVariable int quantity,
-            @PathVariable Long storeId,
-            @PathVariable Long productId) {
-        Map<String, Object> response = new HashMap<>();
-        if (quantity <= 0 || storeId == null || storeId <= 0 || productId == null || productId <= 0) {
-            response.put("message", "Quantity and IDs must be positive values.");
-            return ResponseEntity.badRequest().body(response);
-        }
-        if (!storeRepository.existsById(storeId) || !productRepository.existsById(productId)) {
-            response.put("message", "Store or product was not found.");
-            return ResponseEntity.status(404).body(response);
-        }
-
-        Inventory inventory = inventoryRepository.findByProductIdAndStoreId(productId, storeId);
-        if (inventory == null) {
-            response.put("message", "No inventory record exists for this product and store.");
-            return ResponseEntity.status(404).body(response);
-        }
-        int available = inventory.getStockLevel() == null ? 0 : inventory.getStockLevel();
-        boolean availableForOrder = available >= quantity;
-        response.put("valid", availableForOrder);
-        response.put("availableQuantity", available);
-        response.put("message", availableForOrder
-                ? "Requested quantity is available."
-                : "Insufficient stock for the requested quantity.");
-        return ResponseEntity.ok(response);
-    }
 }

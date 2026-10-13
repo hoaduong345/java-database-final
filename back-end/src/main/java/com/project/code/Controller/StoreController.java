@@ -12,28 +12,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/store")
+@RequestMapping
 public class StoreController {
 
-    @Autowired
-    private StoreRepository storeRepository;
-
-    @Autowired
-    private OrderService orderService;
-
-    // 3. Add Store Method (POST)
-    @PostMapping
-    public ResponseEntity<Map<String, String>> addStore(@RequestBody Store store) {
-        storeRepository.save(store);
-
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Store created successfully.");
-        return ResponseEntity.ok(response);
-    }
-
-    // 4. Validate Store Method (GET)
-    @GetMapping("/validate/{storeId}")
-    public ResponseEntity<Map<String, Object>> validateStore(@PathVariable Long storeId) {
+    @GetMapping({ "/validate/store/{id}", "/store/validate/{id}" })
+    public ResponseEntity<Map<String, Object>> validateStore(@PathVariable("id") Long storeId) {
         boolean exists = storeRepository.existsById(storeId);
         Map<String, Object> response = new HashMap<>();
         response.put("valid", exists);
@@ -41,8 +24,7 @@ public class StoreController {
         return exists ? ResponseEntity.ok(response) : ResponseEntity.status(404).body(response);
     }
 
-    // 5. Place Order Method (POST)
-    @PostMapping("/placeOrder")
+    @PostMapping("/store/placeOrder")
     public ResponseEntity<Map<String, String>> placeOrder(@RequestBody PlaceOrderRequestDTO placeOrderRequest) {
         Map<String, String> response = new HashMap<>();
         try {
@@ -54,4 +36,21 @@ public class StoreController {
             return ResponseEntity.status(500).body(response);
         }
     }
+
+    @Autowired
+    private StoreRepository storeRepository;
+
+    @Autowired
+    private OrderService orderService;
+
+    // 3. Add Store Method (POST)
+    @PostMapping("/store")
+    public ResponseEntity<Map<String, String>> addStore(@RequestBody Store store) {
+        storeRepository.save(store);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Store created successfully.");
+        return ResponseEntity.ok(response);
+    }
+
 }
