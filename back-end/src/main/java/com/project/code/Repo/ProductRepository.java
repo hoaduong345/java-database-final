@@ -11,11 +11,16 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    // Note: findAll() is already provided by JpaRepository, but you can explicitly declare it if needed.
+    // Note: findAll() is already provided by JpaRepository, but you can explicitly
+    // declare it if needed.
     // List<Product> findAll();
 
     // 2. Custom query method to retrieve products by category
     List<Product> findByCategory(String category);
+
+    @Query("SELECT DISTINCT p FROM Product p JOIN p.inventory i WHERE i.store.id = :storeId AND p.category = :category")
+    List<Product> findByStoreIdAndCategory(@Param("storeId") Long storeId,
+            @Param("category") String category);
 
     // 2. Custom query method to retrieve products within a price range
     List<Product> findByPriceBetween(Double minPrice, Double maxPrice);
@@ -26,9 +31,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // 2. Custom query method to retrieve a product by its name
     Product findByName(String name);
 
-    // 2. Custom query method using @Query to find products by a name pattern for a specific store
-    // (Assumes a relationship exists, such as product having a store or store relationship mapping)
-    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.name LIKE %:pname%")
+    // 2. Custom query method using @Query to find products by a name pattern for a
+    // specific store
+    @Query("SELECT DISTINCT p FROM Product p JOIN p.inventory i WHERE i.store.id = :storeId AND p.name LIKE %:pname%")
     List<Product> findByNameLike(@Param("storeId") Long storeId, @Param("pname") String pname);
 
 }

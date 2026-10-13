@@ -32,8 +32,10 @@ public class ReviewController {
             @PathVariable Long storeId,
             @PathVariable Long productId) {
 
-        // Fetch reviews for the specific store and product from MongoDB/JPA repository
-        List<Review> reviews = reviewRepository.findByStoreIdAndProductId(storeId, productId);
+        List<Review> reviews = reviewRepository.findAll().stream()
+                .filter(review -> storeId.equals(review.getStoreId())
+                        && productId.equals(review.getProductId()))
+                .collect(Collectors.toList());
 
         // Filter and transform reviews to include comment, rating, and customer name
         List<Map<String, Object>> filteredReviews = reviews.stream().map(review -> {

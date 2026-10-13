@@ -1,10 +1,11 @@
 package com.project.code.Controller;
 
-import com.project.code.DTO.CombinedRequest; // Assuming a DTO for combined requests
+import com.project.code.Model.CombinedRequest;
 import com.project.code.Model.Inventory;
 import com.project.code.Model.Product;
 import com.project.code.Repo.InventoryRepository;
 import com.project.code.Repo.ProductRepository;
+import com.project.code.Repo.StoreRepository;
 import com.project.code.Service.ServiceClass;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -26,13 +27,16 @@ public class InventoryController {
     private InventoryRepository inventoryRepository;
 
     @Autowired
+    private StoreRepository storeRepository;
+
+    @Autowired
     private ServiceClass serviceClass;
 
     // 3. Update Inventory (PUT)
     @PutMapping("/update")
     public ResponseEntity<Map<String, String>> updateInventory(@RequestBody CombinedRequest combinedRequest) {
         Map<String, String> response = new HashMap<>();
-        
+
         Product product = combinedRequest.getProduct();
         Inventory inventory = combinedRequest.getInventory();
 
@@ -42,12 +46,11 @@ public class InventoryController {
         }
 
         Inventory existingInventory = inventoryRepository.findByProductIdAndStoreId(
-                product.getId(), 
-                inventory.getStore().getId()
-        );
+                product.getId(),
+                inventory.getStore().getId());
 
         if (existingInventory != null) {
-            existingInventory.setStockQuantity(inventory.getStockQuantity());
+            existingInventory.setStockLevel(inventory.getStockLevel());
             inventoryRepository.save(existingInventory);
             response.put("message", "Inventory updated successfully.");
             return ResponseEntity.ok(response);
@@ -92,7 +95,7 @@ public class InventoryController {
     public ResponseEntity<Map<String, List<Product>>> getProductName(
             @RequestParam(required = false, defaultValue = "null") String category,
             @RequestParam(required = false, defaultValue = "null") String name) {
-        
+
         List<Product> products;
 
         if ("null".equals(category) && !"null".equals(name)) {
@@ -113,12 +116,40 @@ public class InventoryController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/filter/{category}/{name}/{storeId}")
+    public ResponseEntity<Map<String, Object>> filterInventory(
+            @PathVariable String category,
+            @PathVariable String name,
+            @PathVariable Long storeId) {
+        Map<String, Object> response = new HashMap<>();
+        if (storeId == null || storeId <= 0 || category.isBlank() || name.isBlank()) {
+            response.put("message", "Category, name, and a positive store ID are required.");
+            return ResponseEntity.badRequest().body(response);
+        }
+        if (!storeRepository.existsById(storeId)) {
+            response.put("message", "Store not found with ID: " + storeId);
+            return ResponseEntity.status(404).body(response);
+        }
+
+        boolean allCategories = "null".equalsIgnoreCase(category);
+        boolean allNames = "null".equalsIgnoreCase(name);
+        List<Inventory> inventories = inventoryRepository.findByStore_Id(storeId).stream()
+                .filter(inventory -> inventory.getProduct() != null)
+                .filter(inventory -> allCategories
+                        || category.equalsIgnoreCase(inventory.getProduct().getCategory()))
+                .filter(inventory -> allNames || (inventory.getProduct().getName() != null
+                        && inventory.getProduct().getName().equalsIgnoreCase(name)))
+                .collect(Collectors.toList());
+        response.put("inventory", inventories);
+        return ResponseEntity.ok(response);
+    }
+
     // 7. Search Products by Name within a Specific Store (GET)
     @GetMapping("/search")
     public ResponseEntity<Map<String, List<Product>>> searchProduct(
-            @RequestParam String name, 
+            @RequestParam String name,
             @RequestParam Long storeId) {
-        
+
         List<Product> products = productRepository.findByNameLike(storeId, name);
 
         Map<String, List<Product>> response = new HashMap<>();
@@ -138,7 +169,7 @@ public class InventoryController {
 
         // Delete related inventory first to maintain referential integrity
         inventoryRepository.deleteByProductId(id);
-        
+
         // Delete the product itself
         productRepository.deleteById(id);
 
@@ -147,18 +178,33 @@ public class InventoryController {
     }
 
     // 9. Validate Quantity Availability (GET)
-    @GetMapping("/validate-quantity")
-    public ResponseEntity<Boolean> validateQuantity(
-            @RequestParam Long productId, 
-            @RequestParam Long storeId, 
-            @RequestParam int requestedQuantity) {
-        
-        Inventory inventory = inventoryRepository.findByProductIdAndStoreId(productId, storeId);
-        
-        if (inventory == null || inventory.getStockQuantity() < requestedQuantity) {
-            return ResponseEntity.ok(false);
+    @GetMapping("/validate/{quantity}/{storeId}/{productId}")
+    public ResponseEntity<Map<String, Object>> validateQuantity(
+            @PathVariable int quantity,
+            @PathVariable Long storeId,
+            @PathVariable Long productId) {
+        Map<String, Object> response = new HashMap<>();
+        if (quantity <= 0 || storeId == null || storeId <= 0 || productId == null || productId <= 0) {
+            response.put("message", "Quantity and IDs must be positive values.");
+            return ResponseEntity.badRequest().body(response);
         }
-        
-        return ResponseEntity.ok(true);
+        if (!storeRepository.existsById(storeId) || !productRepository.existsById(productId)) {
+            response.put("message", "Store or product was not found.");
+            return ResponseEntity.status(404).body(response);
+        }
+
+        Inventory inventory = inventoryRepository.findByProductIdAndStoreId(productId, storeId);
+        if (inventory == null) {
+            response.put("message", "No inventory record exists for this product and store.");
+            return ResponseEntity.status(404).body(response);
+        }
+        int available = inventory.getStockLevel() == null ? 0 : inventory.getStockLevel();
+        boolean availableForOrder = available >= quantity;
+        response.put("valid", availableForOrder);
+        response.put("availableQuantity", available);
+        response.put("message", availableForOrder
+                ? "Requested quantity is available."
+                : "Insufficient stock for the requested quantity.");
+        return ResponseEntity.ok(response);
     }
 }

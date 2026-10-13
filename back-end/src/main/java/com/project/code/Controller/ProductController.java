@@ -7,6 +7,8 @@ import com.project.code.Service.ServiceClass;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -50,12 +52,21 @@ public class ProductController {
     }
 
     // 4. Get Product by ID (GET)
-    @GetMapping("/product/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getProductbyId(@PathVariable Long id) {
         Map<String, Object> response = new HashMap<>();
-        Product product = productRepository.findById(id).orElse(null);
-        response.put("products", product);
-        return ResponseEntity.ok(response);
+        try {
+            Product product = productRepository.findById(id).orElse(null);
+            if (product == null) {
+                response.put("message", "Product not found with ID: " + id);
+                return ResponseEntity.status(404).body(response);
+            }
+            response.put("product", product);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("message", "Unable to retrieve product: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
     }
 
     // 5. Update Product (PUT)
@@ -72,7 +83,7 @@ public class ProductController {
     public ResponseEntity<Map<String, Object>> filterbyCategoryProduct(
             @PathVariable String name,
             @PathVariable String category) {
-        
+
         List<Product> products;
 
         if ("null".equals(category) && !"null".equals(name)) {
@@ -107,7 +118,7 @@ public class ProductController {
     public ResponseEntity<Map<String, Object>> getProductbyCategoryAndStoreId(
             @PathVariable String category,
             @PathVariable Long storeid) {
-        
+
         // Fetch inventory records for the given store and filter products by category
         List<Product> products = inventoryRepository.findByStore_Id(storeid).stream()
                 .map(inventory -> inventory.getProduct())
@@ -121,6 +132,7 @@ public class ProductController {
 
     // 9. Delete Product and Related Inventory (DELETE)
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<Map<String, String>> deleteProduct(@PathVariable Long id) {
         Map<String, String> response = new HashMap<>();
 
@@ -130,20 +142,23 @@ public class ProductController {
             return ResponseEntity.status(404).body(response);
         }
 
-        // Delete from inventory first to maintain referential integrity
-        inventoryRepository.deleteByProductId(id);
-
-        // Delete the product itself
-        productRepository.deleteById(id);
-
-        response.put("message", "Product deleted successfully.");
-        return ResponseEntity.ok(response);
+        try {
+            inventoryRepository.deleteByProductId(id);
+            productRepository.deleteById(id);
+            response.put("message", "Product deleted successfully.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+            response.put("message", "Unable to delete product: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
     }
 
     // 10. Search Products by Name (GET)
     @GetMapping("/searchProduct/{name}")
     public ResponseEntity<Map<String, Object>> searchProduct(@PathVariable String name) {
-        // Fallback search handling using findByName or filtering repository items if custom subName method isn't explicitly declared
+        // Fallback search handling using findByName or filtering repository items if
+        // custom subName method isn't explicitly declared
         List<Product> products = productRepository.findAll().stream()
                 .filter(p -> p.getName() != null && p.getName().toLowerCase().contains(name.toLowerCase()))
                 .collect(Collectors.toList());

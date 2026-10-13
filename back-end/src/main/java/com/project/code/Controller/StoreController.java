@@ -1,6 +1,6 @@
 package com.project.code.Controller;
 
-import com.project.code.DTO.PlaceOrderRequestDTO;
+import com.project.code.Model.PlaceOrderRequestDTO;
 import com.project.code.Model.Store;
 import com.project.code.Repo.StoreRepository;
 import com.project.code.Service.OrderService;
@@ -25,17 +25,20 @@ public class StoreController {
     @PostMapping
     public ResponseEntity<Map<String, String>> addStore(@RequestBody Store store) {
         storeRepository.save(store);
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("message", "Store created successfully.");
         return ResponseEntity.ok(response);
     }
 
     // 4. Validate Store Method (GET)
-    @GetMapping("validate/{storeId}")
-    public ResponseEntity<Boolean> validateStore(@PathVariable Long storeId) {
+    @GetMapping("/validate/{storeId}")
+    public ResponseEntity<Map<String, Object>> validateStore(@PathVariable Long storeId) {
         boolean exists = storeRepository.existsById(storeId);
-        return ResponseEntity.ok(exists);
+        Map<String, Object> response = new HashMap<>();
+        response.put("valid", exists);
+        response.put("message", exists ? "Store exists." : "Store not found.");
+        return exists ? ResponseEntity.ok(response) : ResponseEntity.status(404).body(response);
     }
 
     // 5. Place Order Method (POST)
@@ -47,8 +50,8 @@ public class StoreController {
             response.put("message", "Order placed successfully.");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            response.put("Error", "Failed to place order: " + e.getMessage());
-            return ResponseEntity.badRequest().body(response);
+            response.put("message", "Failed to place order: " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
 }

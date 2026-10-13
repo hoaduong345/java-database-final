@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Column;
 
 @Entity
 public class OrderDetails {
@@ -33,7 +34,9 @@ public class OrderDetails {
 
     private Double totalPrice;
 
-    private LocalDateTime date;
+    /** Date and time when this order was placed. */
+    @Column(name = "order_date")
+    private LocalDateTime orderDate;
 
     @OneToMany(mappedBy = "order", fetch = FetchType.EAGER)
     @JsonManagedReference
@@ -74,12 +77,12 @@ public class OrderDetails {
         this.totalPrice = totalPrice;
     }
 
-    public LocalDateTime getDate() {
-        return date;
+    public LocalDateTime getOrderDate() {
+        return orderDate;
     }
 
-    public void setDate(LocalDateTime date) {
-        this.date = date;
+    public void setOrderDate(LocalDateTime orderDate) {
+        this.orderDate = orderDate;
     }
 
     public List<OrderItem> getOrderItems() {

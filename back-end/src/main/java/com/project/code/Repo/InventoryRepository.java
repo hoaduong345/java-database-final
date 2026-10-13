@@ -16,14 +16,13 @@ import jakarta.transaction.Transactional;
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
 
     @Query("""
-           SELECT i FROM Inventory i
-           WHERE i.product.id = :productId
-           AND i.store.id = :storeId
-           """)
-    Inventory findByProductIdandStoreId(
+            SELECT i FROM Inventory i
+            WHERE i.product.id = :productId
+            AND i.store.id = :storeId
+            """)
+    Inventory findByProductIdAndStoreId(
             @Param("productId") Long productId,
-            @Param("storeId") Long storeId
-    );
+            @Param("storeId") Long storeId);
 
     List<Inventory> findByStore_Id(Long storeId);
 

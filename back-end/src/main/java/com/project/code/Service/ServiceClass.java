@@ -17,16 +17,16 @@ public class ServiceClass {
     private ProductRepository productRepository;
 
     // 1. validateInventory Method:
-    // Checks if an inventory record exists for a given product and store combination.
+    // Checks if an inventory record exists for a given product and store
+    // combination.
     // Returns `false` if inventory exists, otherwise `true`.
     public boolean validateInventory(Inventory inventory) {
         if (inventory == null || inventory.getProduct() == null || inventory.getStore() == null) {
-            return true;
+            return false;
         }
         Inventory existingInventory = inventoryRepository.findByProductIdAndStoreId(
-                inventory.getProduct().getId(), 
-                inventory.getStore().getId()
-        );
+                inventory.getProduct().getId(),
+                inventory.getStore().getId());
         // Returns false if it already exists, true otherwise
         return existingInventory == null;
     }
@@ -45,7 +45,8 @@ public class ServiceClass {
 
     // 3. ValidateProductId Method:
     // Checks if a product exists by its ID.
-    // Returns `false` if the product does not exist with the given ID, otherwise `true`.
+    // Returns `false` if the product does not exist with the given ID, otherwise
+    // `true`.
     public boolean validateProductId(long id) {
         // existsById returns true if found, false if not found
         return productRepository.existsById(id);
@@ -54,13 +55,10 @@ public class ServiceClass {
     // 4. getInventoryId Method:
     // Fetches the inventory record for a given product and store combination.
     // Returns the inventory record.
-    public Inventory getInventoryId(Inventory inventory) {
-        if (inventory == null || inventory.getProduct() == null || inventory.getStore() == null) {
+    public Inventory getInventoryId(Long productId, Long storeId) {
+        if (productId == null || storeId == null) {
             return null;
         }
-        return inventoryRepository.findByProductIdAndStoreId(
-                inventory.getProduct().getId(), 
-                inventory.getStore().getId()
-        );
+        return inventoryRepository.findByProductIdAndStoreId(productId, storeId);
     }
 }
